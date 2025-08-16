@@ -70,6 +70,7 @@ set(mudlet_SRCS
     dlgMapLabel.cpp
     dlgMapper.cpp
     dlgModuleManager.cpp
+    dlgMxpRecovery.cpp
     dlgNotepad.cpp
     dlgPackageExporter.cpp
     dlgPackageManager.cpp
@@ -257,6 +258,7 @@ set(mudlet_HDRS
     dlgMapLabel.h
     dlgMapper.h
     dlgModuleManager.h
+    dlgMxpRecovery.h
     dlgNotepad.h
     dlgPackageExporter.h
     dlgPackageManager.h

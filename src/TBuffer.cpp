@@ -28,6 +28,7 @@
 #include "TStringUtils.h"
 #include "TTextProperties.h"
 #include "widechar_width.h"
+#include "dlgMxpRecovery.h"
 
 #include "pre_guard.h"
 #include <QTextBoundaryFinder>
@@ -690,6 +691,33 @@ void TBuffer::translateToPlainText(std::string& incoming, const bool isFromServe
                     TMxpProcessingResult const result =
                             mpHost->mMxpProcessor.processMxpInput(ch, localBufferPosition >= endOfMXPEntity);
 
+                    // Check for MXP parsing errors and offer recovery
+                    if (mpHost->mMxpProcessor.isStuckInTag()) {
+                        QString problematicContent = mpHost->mMxpProcessor.getProblematicTagContent();
+                        
+                        // Create and show recovery dialog
+                        dlgMxpRecovery recoveryDialog(mpHost, problematicContent, nullptr);
+                        recoveryDialog.exec();
+                        
+                        auto action = recoveryDialog.getSelectedAction();
+                        if (action == dlgMxpRecovery::DisableMXP) {
+                            // Disable MXP processing
+                            mpHost->mMxpProcessor.disable();
+                            mpHost->setForceMXPProcessorOn(false);
+                            mpHost->mEnableMXP = false;
+                            
+                            // Reset the processor state
+                            mpHost->mMxpProcessor.resetErrorState();
+                            
+                            // Process the character as normal text
+                            goto PROCESS_AS_TEXT;
+                        } else if (action == dlgMxpRecovery::ContinueWithMXP) {
+                            // Reset error state and continue
+                            mpHost->mMxpProcessor.resetErrorState();
+                        }
+                        // For dismiss action, just continue without changes
+                    }
+
                     switch (result) {
                     case HANDLER_NEXT_CHAR:
                         localBufferPosition++;
@@ -770,6 +798,8 @@ void TBuffer::translateToPlainText(std::string& incoming, const bool isFromServe
                 mpHost->mMxpProcessor.resetToDefaultMode();
             }
         }
+
+PROCESS_AS_TEXT:
 
 COMMIT_LINE:
         if (CHAR_IS_COMMIT_CHAR(ch)) {

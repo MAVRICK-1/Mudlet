@@ -153,7 +153,19 @@ void TMxpProcessor::disable()
 TMxpProcessingResult TMxpProcessor::processMxpInput(char& ch, bool resolveCustomEntities)
 {
     if (!mMxpTagBuilder.accept(ch) && mMxpTagBuilder.isInsideTag() && !mMxpTagBuilder.hasTag()) {
+        mTagStuckCounter++;
+        mProblematicContent += ch;
+        
+        if (mTagStuckCounter > 1000) {
+            qDebug() << "TMxpProcessor: Potential infinite loop detected in MXP parsing. Content: " << mProblematicContent.left(100);
+        }
+        
         return HANDLER_NEXT_CHAR;
+    }
+    
+    if (mMxpTagBuilder.hasTag()) {
+        mTagStuckCounter = 0;
+        mProblematicContent.clear();
     }
 
     if (mMxpTagBuilder.hasTag()) {
@@ -193,4 +205,20 @@ TMxpProcessingResult TMxpProcessor::processMxpInput(char& ch, bool resolveCustom
 void TMxpProcessor::processRawInput(char ch)
 {
     mMxpTagProcessor.handleContent(ch);
+}
+
+bool TMxpProcessor::isStuckInTag() const
+{
+    return mTagStuckCounter > 1000;
+}
+
+QString TMxpProcessor::getProblematicTagContent() const
+{
+    return mProblematicContent.left(100);
+}
+
+void TMxpProcessor::resetErrorState()
+{
+    mTagStuckCounter = 0;
+    mProblematicContent.clear();
 }

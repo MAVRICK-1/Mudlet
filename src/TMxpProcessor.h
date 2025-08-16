@@ -57,6 +57,10 @@ public:
     TMxpProcessingResult processMxpInput(char& ch, bool resolveCustomEntities);
     void processRawInput(char ch);
     inline QString getEntityValue() { return lastEntityValue;}
+    
+    bool isStuckInTag() const;
+    QString getProblematicTagContent() const;
+    void resetErrorState();
 
 private:
     // State of MXP system:
@@ -74,6 +78,10 @@ private:
 
     // value of the last resolved entity:
     QString lastEntityValue;
+    
+    // Error detection state:
+    mutable int mTagStuckCounter = 0;
+    mutable QString mProblematicContent;
 };
 
 #endif //MUDLET_TMXPPROCESSOR_H
