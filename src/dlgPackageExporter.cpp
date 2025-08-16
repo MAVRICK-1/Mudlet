@@ -159,6 +159,97 @@ dlgPackageExporter::~dlgPackageExporter()
     delete ui;
 }
 
+void dlgPackageExporter::setModuleCreationMode(bool isModule)
+{
+    mIsModuleCreationMode = isModule;
+    if (isModule) {
+        // Update the window title for module creation
+        setWindowTitle(tr("Create Module - %1").arg(mpHost->getName()));
+        // Pre-fill with module export defaults
+        ui->lineEdit_packageName->setPlaceholderText(tr("Enter module name"));
+        // Focus on module creation workflow
+        ui->packageList->setCurrentIndex(0); // Set to "update installed package" which means new
+    }
+}
+
+void dlgPackageExporter::preselectTrigger(QTreeWidgetItem* item)
+{
+    if (!item) return;
+    
+    // Find the matching trigger in our trigger map
+    for (auto it = triggerMap.begin(); it != triggerMap.end(); ++it) {
+        if (it.value()->getName() == item->text(0)) {
+            it.key()->setCheckState(0, Qt::Checked);
+            break;
+        }
+    }
+}
+
+void dlgPackageExporter::preselectTimer(QTreeWidgetItem* item)
+{
+    if (!item) return;
+    
+    // Find the matching timer in our timer map
+    for (auto it = timerMap.begin(); it != timerMap.end(); ++it) {
+        if (it.value()->getName() == item->text(0)) {
+            it.key()->setCheckState(0, Qt::Checked);
+            break;
+        }
+    }
+}
+
+void dlgPackageExporter::preselectAlias(QTreeWidgetItem* item)
+{
+    if (!item) return;
+    
+    // Find the matching alias in our alias map
+    for (auto it = aliasMap.begin(); it != aliasMap.end(); ++it) {
+        if (it.value()->getName() == item->text(0)) {
+            it.key()->setCheckState(0, Qt::Checked);
+            break;
+        }
+    }
+}
+
+void dlgPackageExporter::preselectScript(QTreeWidgetItem* item)
+{
+    if (!item) return;
+    
+    // Find the matching script in our script map
+    for (auto it = scriptMap.begin(); it != scriptMap.end(); ++it) {
+        if (it.value()->getName() == item->text(0)) {
+            it.key()->setCheckState(0, Qt::Checked);
+            break;
+        }
+    }
+}
+
+void dlgPackageExporter::preselectAction(QTreeWidgetItem* item)
+{
+    if (!item) return;
+    
+    // Find the matching action in our action map
+    for (auto it = actionMap.begin(); it != actionMap.end(); ++it) {
+        if (it.value()->getName() == item->text(0)) {
+            it.key()->setCheckState(0, Qt::Checked);
+            break;
+        }
+    }
+}
+
+void dlgPackageExporter::preselectKey(QTreeWidgetItem* item)
+{
+    if (!item) return;
+    
+    // Find the matching key in our key map
+    for (auto it = keyMap.begin(); it != keyMap.end(); ++it) {
+        if (it.value()->getName() == item->text(0)) {
+            it.key()->setCheckState(0, Qt::Checked);
+            break;
+        }
+    }
+}
+
 void dlgPackageExporter::appendToDetails(const QString& what, const QString& value)
 {
     if (value.isEmpty()) {
@@ -621,10 +712,24 @@ void dlgPackageExporter::slot_exportPackage()
                 if (auto [isOk, errorMsg] = future.result(); !isOk) {
                     displayResultMessage(errorMsg, false);
                 } else {
-                    displayResultMessage(tr("Package \"%1\" exported to: %2")
-                                                 .arg(mPackageName.toHtmlEscaped(), qsl("<a href=\"file:///%1\">%1</a>")
-                                                                            .arg(getActualPath().toHtmlEscaped())),
-                                         true);
+                    // If in module creation mode, automatically install the module
+                    if (mIsModuleCreationMode) {
+                        auto [installSuccess, installMessage] = mpHost->installPackage(mPackagePathFileName, enums::PackageModuleType::ModuleFromUI);
+                        if (installSuccess) {
+                            displayResultMessage(tr("Module \"%1\" created and installed successfully!")
+                                                         .arg(mPackageName.toHtmlEscaped()),
+                                                 true);
+                        } else {
+                            displayResultMessage(tr("Module \"%1\" exported but installation failed: %2")
+                                                         .arg(mPackageName.toHtmlEscaped(), installMessage.toHtmlEscaped()),
+                                                 false);
+                        }
+                    } else {
+                        displayResultMessage(tr("Package \"%1\" exported to: %2")
+                                                     .arg(mPackageName.toHtmlEscaped(), qsl("<a href=\"file:///%1\">%1</a>")
+                                                                                .arg(getActualPath().toHtmlEscaped())),
+                                             true);
+                    }
                 }
                 mCancelButton->setVisible(false);
                 mCloseButton->setVisible(true);
