@@ -313,7 +313,7 @@ int main(int argc, char* argv[])
     const QCommandLineOption steamMode(QStringList() << qsl("steammode"), qsl("Adjusts Mudlet settings to match Steam's requirements."));
     parser.addOption(steamMode);
 
-    parser.addPositionalArgument("package", "Path to .mpackage file");
+    parser.addPositionalArgument("package", "Path to .mpackage file or telnet:// URI");
 
     const bool parsedCommandLineOk = parser.parse(app->arguments());
 
@@ -438,15 +438,33 @@ int main(int argc, char* argv[])
     const bool firstInstanceOfMudlet = instanceCoordinator->tryToStart();
 
     const QStringList positionalArguments = parser.positionalArguments();
+    QString telnetUri;
     if (!positionalArguments.isEmpty()) {
-        const QString absPath = QDir(positionalArguments.first()).absolutePath();
-        instanceCoordinator->queuePackage(absPath);
-        if (!firstInstanceOfMudlet) {
-            const bool successful = instanceCoordinator->installPackagesRemotely();
-            if (successful) {
-                return 0;
-            } else {
-                return 1;
+        const QString firstArg = positionalArguments.first();
+        // Check if it's a telnet:// URI
+        if (firstArg.startsWith(qsl("telnet://"))) {
+            telnetUri = firstArg;
+            // If another instance is running, send the URI to it
+            if (!firstInstanceOfMudlet) {
+                instanceCoordinator->queuePackage(firstArg);
+                const bool successful = instanceCoordinator->installPackagesRemotely();
+                if (successful) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        } else {
+            // It's a package file
+            const QString absPath = QDir(firstArg).absolutePath();
+            instanceCoordinator->queuePackage(absPath);
+            if (!firstInstanceOfMudlet) {
+                const bool successful = instanceCoordinator->installPackagesRemotely();
+                if (successful) {
+                    return 0;
+                } else {
+                    return 1;
+                }
             }
         }
     }
@@ -687,6 +705,11 @@ int main(int argc, char* argv[])
     settings.setValue(".mpackage", "MudletPackage");
     settings.setValue("MudletPackage/.", "Mudlet Package");
     settings.setValue("MudletPackage/shell/open/command/.", "mudlet %1");
+    
+    // Register telnet:// URI handler
+    settings.setValue("telnet/.", "URL:Telnet Protocol");
+    settings.setValue("telnet/URL Protocol", "");
+    settings.setValue("telnet/shell/open/command/.", QString("\"%1\" \"%2\"").arg(QCoreApplication::applicationFilePath().replace("/", "\\")).arg("%1"));
 #endif
 
     // Pass ownership of MudletInstanceCoordinator to mudlet.
@@ -729,9 +752,13 @@ int main(int argc, char* argv[])
         });
     }
 
-    QTimer::singleShot(0, qApp, [cliProfiles]() {
+    QTimer::singleShot(0, qApp, [cliProfiles, telnetUri]() {
         // ensure Mudlet singleton is initialised before calling profile loading
-        mudlet::self()->startAutoLogin(cliProfiles);
+        if (!telnetUri.isEmpty()) {
+            mudlet::self()->handleTelnetUri(telnetUri);
+        } else {
+            mudlet::self()->startAutoLogin(cliProfiles);
+        }
     });
 
 #if defined(INCLUDE_UPDATER)

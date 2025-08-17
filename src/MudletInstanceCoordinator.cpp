@@ -76,7 +76,10 @@ void MudletInstanceCoordinator::installPackagesToHost(Host* activeProfile)
 {
     mMutex.lock();
     for (const QString& path : mQueuedPackagePaths) {
-        auto ret = activeProfile->installPackage(path, enums::PackageModuleType::Package);
+        // Skip telnet:// URIs when installing to host - they're handled separately
+        if (!path.startsWith(qsl("telnet://"))) {
+            auto ret = activeProfile->installPackage(path, enums::PackageModuleType::Package);
+        }
     }
     mQueuedPackagePaths.clear();
     mMutex.unlock();
@@ -115,10 +118,35 @@ void MudletInstanceCoordinator::installPackagesLocally()
     QTimer::singleShot(0, this, [this]() {
         mudlet* mudletApp = mudlet::self();
         Q_ASSERT(mudletApp);
+        
+        // Check if there are any telnet:// URIs in the queue
+        bool hasTelnetUri = false;
+        QString telnetUri;
+        mMutex.lock();
+        for (const QString& path : mQueuedPackagePaths) {
+            if (path.startsWith(qsl("telnet://"))) {
+                hasTelnetUri = true;
+                telnetUri = path;
+                break;
+            }
+        }
+        mMutex.unlock();
+        
+        if (hasTelnetUri) {
+            // Handle telnet:// URI
+            mudletApp->handleTelnetUri(telnetUri);
+            // Remove the telnet URI from the queue
+            mMutex.lock();
+            mQueuedPackagePaths.removeAll(telnetUri);
+            mMutex.unlock();
+        }
+        
+        // Handle regular packages
         Host* activeHost = mudletApp->getActiveHost();
         if (activeHost) {
             installPackagesToHost(activeHost);
-        } else {
+        } else if (!hasTelnetUri) {
+            // Only show connection dialog if we didn't handle a telnet URI
             mudletApp->slot_showConnectionDialog();
         }
     });

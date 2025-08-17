@@ -3744,6 +3744,103 @@ void mudlet::startAutoLogin(const QStringList& cliProfiles)
     }
 }
 
+void mudlet::handleTelnetUri(const QString& uri)
+{
+    // Parse telnet:// URI format: telnet://host[:port]
+    if (!uri.startsWith(qsl("telnet://"))) {
+        return;
+    }
+    
+    QString connectionString = uri.mid(9); // Remove "telnet://"
+    QString host;
+    int port = 23; // Default telnet port
+    
+    // Parse host and optional port
+    int colonIndex = connectionString.indexOf(':');
+    if (colonIndex != -1) {
+        host = connectionString.left(colonIndex);
+        bool ok;
+        port = connectionString.mid(colonIndex + 1).toInt(&ok);
+        if (!ok) {
+            port = 23; // Fall back to default if port parsing fails
+        }
+    } else {
+        host = connectionString;
+    }
+    
+    // Remove any trailing slashes or paths
+    int slashIndex = host.indexOf('/');
+    if (slashIndex != -1) {
+        host = host.left(slashIndex);
+    }
+    
+    if (host.isEmpty()) {
+        return;
+    }
+    
+    // Get list of existing profiles
+    QStringList profileList = QDir(getMudletPath(enums::profilesPath)).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    
+    // Check if any existing profile matches this server
+    QString matchingProfile;
+    QDateTime mostRecentTime;
+    
+    for (const QString& profileName : profileList) {
+        QString profileHost = readProfileData(profileName, qsl("url"));
+        QString profilePortStr = readProfileData(profileName, qsl("port"));
+        
+        bool ok;
+        int profilePort = profilePortStr.toInt(&ok);
+        if (!ok) {
+            profilePort = 23;
+        }
+        
+        // Check if this profile matches the telnet URI
+        if (profileHost == host && profilePort == port) {
+            // Check last modified time of profile directory
+            QFileInfo profileInfo(getMudletPath(enums::profileDataItemPath, profileName, QString()));
+            QDateTime modifiedTime = profileInfo.lastModified();
+            
+            if (matchingProfile.isEmpty() || modifiedTime > mostRecentTime) {
+                matchingProfile = profileName;
+                mostRecentTime = modifiedTime;
+            }
+        }
+    }
+    
+    if (!matchingProfile.isEmpty()) {
+        // Load the most recently used matching profile
+        doAutoLogin(matchingProfile);
+    } else {
+        // Create a new profile for this connection
+        QString newProfileName = host;
+        if (port != 23) {
+            newProfileName += qsl(":%1").arg(port);
+        }
+        
+        // Ensure unique profile name
+        QString baseName = newProfileName;
+        int counter = 2;
+        while (profileList.contains(newProfileName)) {
+            newProfileName = qsl("%1 (%2)").arg(baseName).arg(counter++);
+        }
+        
+        // Create profile directory
+        QDir dir;
+        if (dir.mkpath(getMudletPath(enums::profileHomePath, newProfileName))) {
+            // Save connection settings
+            writeProfileData(newProfileName, qsl("url"), host);
+            writeProfileData(newProfileName, qsl("port"), QString::number(port));
+            
+            // Load the new profile and connect
+            Host* pHost = loadProfile(newProfileName, true);
+            if (pHost) {
+                slot_connectionDialogueFinished(newProfileName, true);
+            }
+        }
+    }
+}
+
 // credit to https://github.com/DigitalInBlue/Celero/blob/master/src/Memory.cpp
 int64_t mudlet::getPhysicalMemoryTotal()
 {
