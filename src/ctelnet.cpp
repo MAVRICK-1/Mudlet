@@ -3650,15 +3650,14 @@ void cTelnet::postData()
     }
     
     // Additional safety check: verify console is not being destroyed
-    // This prevents crashes during rapid profile closure scenarios
-    try {
-        if (mpHost->mpConsole->parent() || mpHost->mpConsole->isVisible()) {
-            mpHost->mpConsole->printOnDisplay(mMudData, true);
-        }
-    } catch (...) {
-        // Silently ignore exceptions during console access in shutdown scenarios
-        // This prevents crashes when objects are in undefined states during destruction
+    // Use QPointer-style checking and avoid accessing destroyed widgets
+    QWidget* parentWidget = mpHost->mpConsole->parentWidget();
+    if (!parentWidget || !mpHost->mpConsole->isVisible()) {
+        // Console is likely being destroyed or not ready, skip processing
+        return;
     }
+    
+    mpHost->mpConsole->printOnDisplay(mMudData, true);
 }
 
 void cTelnet::initStreamDecompressor()
