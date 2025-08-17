@@ -165,10 +165,74 @@ void dlgPackageExporter::setModuleCreationMode(bool isModule)
     if (isModule) {
         // Update the window title for module creation
         setWindowTitle(tr("Create Module - %1").arg(mpHost->getName()));
-        // Pre-fill with module export defaults
+        
+        // Update UI elements for module creation
         ui->lineEdit_packageName->setPlaceholderText(tr("Enter module name"));
-        // Focus on module creation workflow
-        ui->packageList->setCurrentIndex(0); // Set to "update installed package" which means new
+        
+        // Update button text to be module-specific
+        mExportButton->setText(tr("Create Module"));
+        
+        // Update export location button text
+        ui->pushButton_packageLocation->setText(tr("Select where to save module"));
+        
+        // Update the groupbox title for module creation
+        ui->groupBox_exportSelection->setTitle(tr("Select items to include in module"));
+        
+        // Hide the package list dropdown and "or" label for cleaner module creation
+        ui->packageList->setVisible(false);
+        ui->label_or->setVisible(false);
+        
+        // Update the description button text to be module-specific
+        // IMPORTANT: Must use setText not setPlaceholderText for buttons
+        ui->pushButton_openInfos->setText(tr("Add module description, icon, and assets (optional)"));
+        
+        // Update the export location widget to be more descriptive
+        ui->lineEdit_filePath->setPlaceholderText(tr("Module will be saved here"));
+        
+        // Update info label if visible
+        ui->infoLabel->setText(tr(""));
+        
+        // Update metadata labels to be module-specific
+        ui->label_shortDescription->setText(tr("Module description"));
+        ui->lineEdit_title->setPlaceholderText(tr("Brief description of your module"));
+        ui->lineEdit_author->setPlaceholderText(tr("Module author (recommended)"));
+        ui->lineEdit_version->setPlaceholderText(tr("Module version (recommended)"));
+        
+        // Update dependencies and assets labels
+        ui->label_requiredPackages->setText(tr("Module dependencies"));
+        ui->label_assets->setText(tr("Include module assets (images, sounds, fonts)"));
+        ui->addFiles->setText(tr("Select files to include in module"));
+        
+        // Clear dropdown lists that have package-specific items
+        ui->packageList->clear();
+        ui->DependencyList->clear();
+        // Add only module-relevant items to dependency list
+        ui->DependencyList->addItem(tr("Select module dependencies"));
+        ui->DependencyList->addItems(mpHost->mInstalledPackages);
+        auto modules = mpHost->mInstalledModules;
+        QMap<QString, QStringList>::const_iterator iter = modules.constBegin();
+        while (iter != modules.constEnd()) {
+            ui->DependencyList->addItem(iter.key());
+            ++iter;
+        }
+        
+        // Clear the default package template text and set module-specific template
+        ui->textEdit_description->clear();
+        ui->textEdit_description->setPlainText(tr("(optional)\n\n"
+            "This module description is shown in the Module Manager. The editor supports Commonmark markdown.\n\n"
+            "### Description\n\n"
+            "A full description of what this module does. If the module is game-specific, mention that here.\n\n"
+            "### Usage\n\n"
+            "If this module uses aliases, show a few examples and expected output.\n\n"
+            "`> alias_1`\n\n"
+            "    output of alias_1  -- indent by four spaces\n"
+            "    more output        -- for code blocks\n\n"
+            "### See Also\n\n"
+            "Further reading material, e.g., links to documentation or forum posts.\n\n"
+            "* https://wiki.mudlet.org/w/Manual:Modules"));
+        
+        // Focus on the module name input
+        ui->lineEdit_packageName->setFocus();
     }
 }
 
