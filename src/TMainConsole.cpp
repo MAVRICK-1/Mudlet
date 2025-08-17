@@ -1143,7 +1143,11 @@ bool TMainConsole::setTextFormat(const QString& name, const QColor& fgColor, con
 
 void TMainConsole::printOnDisplay(std::string& incomingSocketData, const bool isFromServer)
 {
-    Q_ASSERT_X(mpLineEdit_networkLatency, "TMainConsole::printOnDisplay(...)", "mpLineEdit_networkLatency does not point to a valid QLineEdit");
+    // Check if host is shutting down or if UI elements are being destroyed
+    if (!mpHost || mpHost->isClosingDown() || !mpLineEdit_networkLatency) {
+        return;
+    }
+    
     mProcessingTimer.restart();
 
     mTriggerEngineMode = true;
@@ -1167,28 +1171,44 @@ void TMainConsole::printOnDisplay(std::string& incomingSocketData, const bool is
     }
 
     const double processT = mProcessingTimer.elapsed() / 1000.0;
-    if (mpHost->mTelnet.mGA_Driver) {
-        /*:
-        The first argument 'N' represents the 'N'etwork latency; the second 'S' the
-        'S'ystem (processing) time
-        */
-        mpLineEdit_networkLatency->setText(tr("N:%1 S:%2")
-                                                   .arg(mpHost->mTelnet.networkLatencyTime, 0, 'f', 3)
-                                                   .arg(processT, 0, 'f', 3));
-    } else {
-        /*:
-        The argument 'S' represents the 'S'ystem (processing) time, in this situation
-        the Game Server is not sending \"GoAhead\" signals so we cannot deduce the
-        network latency...
-        */
-        mpLineEdit_networkLatency->setText(tr("<no GA> S:%1")
-                                                   .arg(processT, 0, 'f', 3));
+    
+    // Double-check UI elements are still valid before updating during shutdown
+    if (mpLineEdit_networkLatency && !mpHost->isClosingDown()) {
+        // Additional safety check: verify the widget is still valid and not being destroyed
+        // This prevents crashes when Qt widgets are in intermediate destruction states
+        try {
+            if (mpLineEdit_networkLatency->isVisible() || mpLineEdit_networkLatency->parent()) {
+                if (mpHost->mTelnet.mGA_Driver) {
+                    /*:
+                    The first argument 'N' represents the 'N'etwork latency; the second 'S' the
+                    'S'ystem (processing) time
+                    */
+                    mpLineEdit_networkLatency->setText(tr("N:%1 S:%2")
+                                                               .arg(mpHost->mTelnet.networkLatencyTime, 0, 'f', 3)
+                                                               .arg(processT, 0, 'f', 3));
+                } else {
+                    /*:
+                    The argument 'S' represents the 'S'ystem (processing) time, in this situation
+                    the Game Server is not sending \"GoAhead\" signals so we cannot deduce the
+                    network latency...
+                    */
+                    mpLineEdit_networkLatency->setText(tr("<no GA> S:%1")
+                                                               .arg(processT, 0, 'f', 3));
+                }
+            }
+        } catch (...) {
+            // Silently ignore any exceptions during widget access in shutdown scenarios
+            // This prevents crashes when widgets are in undefined states during destruction
+        }
     }
     // Modify the tab text if this is not the currently active host - this
     // method is only used on the "main" console so no need to filter depending
     // on TConsole types:
 
-    emit signal_newDataAlert(mProfileName);
+    // Only emit signal if not shutting down to prevent crashes during cleanup
+    if (!mpHost->isClosingDown()) {
+        emit signal_newDataAlert(mProfileName);
+    }
 }
 
 void TMainConsole::runTriggers(int line)
