@@ -121,12 +121,10 @@ dlgPackageExporter::dlgPackageExporter(QWidget *parent, Host* pHost)
     ui->DependencyList->addItem(tr("add dependencies"));
     ui->packageList->addItems(mpHost->mInstalledPackages);
     ui->DependencyList->addItems(mpHost->mInstalledPackages);
-    auto modules = mpHost -> mInstalledModules;
-    QMap<QString, QStringList>::const_iterator iter = modules.constBegin();
-    while (iter != modules.constEnd()) {
-        ui->packageList->addItem(iter.key());
-        ui->DependencyList->addItem(iter.key());
-        ++iter;
+    auto modules = mpHost->mInstalledModules;
+    for (const auto& [moduleName, moduleData] : modules.asKeyValueRange()) {
+        ui->packageList->addItem(moduleName);
+        ui->DependencyList->addItem(moduleName);
     }
 
     listTriggers();
@@ -190,7 +188,7 @@ void dlgPackageExporter::setModuleCreationMode(bool isModule)
         ui->lineEdit_filePath->setPlaceholderText(tr("Module location"));
         
         // Update info label if visible
-        ui->infoLabel->setText(tr(""));
+        ui->infoLabel->setText(QString());
         
         // Update metadata labels to be module-specific
         ui->label_shortDescription->setText(tr("Module description"));
@@ -204,17 +202,19 @@ void dlgPackageExporter::setModuleCreationMode(bool isModule)
         ui->addFiles->setText(tr("Select files to include in module"));
         
         // Clear dropdown lists that have package-specific items
+        // Temporarily disconnect the signal to prevent unwanted selections when clearing
+        disconnect(ui->packageList, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &dlgPackageExporter::slot_packageChanged);
         ui->packageList->clear();
         ui->DependencyList->clear();
         // Add only module-relevant items to dependency list
         ui->DependencyList->addItem(tr("Select module dependencies"));
         ui->DependencyList->addItems(mpHost->mInstalledPackages);
         auto modules = mpHost->mInstalledModules;
-        QMap<QString, QStringList>::const_iterator iter = modules.constBegin();
-        while (iter != modules.constEnd()) {
-            ui->DependencyList->addItem(iter.key());
-            ++iter;
+        for (const auto& [moduleName, moduleData] : modules.asKeyValueRange()) {
+            ui->DependencyList->addItem(moduleName);
         }
+        // Reconnect the signal (though it's not needed in module creation mode)
+        connect(ui->packageList, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &dlgPackageExporter::slot_packageChanged);
         
         // Clear the default package template text and set module-specific template
         ui->textEdit_description->clear();
@@ -238,11 +238,16 @@ void dlgPackageExporter::setModuleCreationMode(bool isModule)
 
 void dlgPackageExporter::preselectTrigger(QTreeWidgetItem* item)
 {
-    if (!item) return;
+    if (!item) {
+        return;
+    }
     
-    // Find the matching trigger in our trigger map
+    // Get the trigger ID from the editor tree item
+    const int triggerId = item->data(0, Qt::UserRole).toInt();
+    
+    // Find the matching trigger in our trigger map by ID
     for (auto it = triggerMap.begin(); it != triggerMap.end(); ++it) {
-        if (it.value()->getName() == item->text(0)) {
+        if (it.value()->getID() == triggerId) {
             it.key()->setCheckState(0, Qt::Checked);
             break;
         }
@@ -252,12 +257,15 @@ void dlgPackageExporter::preselectTrigger(QTreeWidgetItem* item)
 void dlgPackageExporter::preselectTimer(QTreeWidgetItem* item)
 {
     if (!item) {
-      return;
+        return;
     }
     
-    // Find the matching timer in our timer map
+    // Get the timer ID from the editor tree item
+    const int timerId = item->data(0, Qt::UserRole).toInt();
+    
+    // Find the matching timer in our timer map by ID
     for (auto it = timerMap.begin(); it != timerMap.end(); ++it) {
-        if (it.value()->getName() == item->text(0)) {
+        if (it.value()->getID() == timerId) {
             it.key()->setCheckState(0, Qt::Checked);
             break;
         }
@@ -266,11 +274,16 @@ void dlgPackageExporter::preselectTimer(QTreeWidgetItem* item)
 
 void dlgPackageExporter::preselectAlias(QTreeWidgetItem* item)
 {
-    if (!item) return;
+    if (!item) {
+        return;
+    }
     
-    // Find the matching alias in our alias map
+    // Get the alias ID from the editor tree item
+    const int aliasId = item->data(0, Qt::UserRole).toInt();
+    
+    // Find the matching alias in our alias map by ID
     for (auto it = aliasMap.begin(); it != aliasMap.end(); ++it) {
-        if (it.value()->getName() == item->text(0)) {
+        if (it.value()->getID() == aliasId) {
             it.key()->setCheckState(0, Qt::Checked);
             break;
         }
@@ -279,11 +292,16 @@ void dlgPackageExporter::preselectAlias(QTreeWidgetItem* item)
 
 void dlgPackageExporter::preselectScript(QTreeWidgetItem* item)
 {
-    if (!item) return;
+    if (!item) {
+        return;
+    }
     
-    // Find the matching script in our script map
+    // Get the script ID from the editor tree item
+    const int scriptId = item->data(0, Qt::UserRole).toInt();
+    
+    // Find the matching script in our script map by ID
     for (auto it = scriptMap.begin(); it != scriptMap.end(); ++it) {
-        if (it.value()->getName() == item->text(0)) {
+        if (it.value()->getID() == scriptId) {
             it.key()->setCheckState(0, Qt::Checked);
             break;
         }
@@ -292,11 +310,16 @@ void dlgPackageExporter::preselectScript(QTreeWidgetItem* item)
 
 void dlgPackageExporter::preselectAction(QTreeWidgetItem* item)
 {
-    if (!item) return;
+    if (!item) {
+        return;
+    }
     
-    // Find the matching action in our action map
+    // Get the action ID from the editor tree item
+    const int actionId = item->data(0, Qt::UserRole).toInt();
+    
+    // Find the matching action in our action map by ID
     for (auto it = actionMap.begin(); it != actionMap.end(); ++it) {
-        if (it.value()->getName() == item->text(0)) {
+        if (it.value()->getID() == actionId) {
             it.key()->setCheckState(0, Qt::Checked);
             break;
         }
@@ -305,11 +328,16 @@ void dlgPackageExporter::preselectAction(QTreeWidgetItem* item)
 
 void dlgPackageExporter::preselectKey(QTreeWidgetItem* item)
 {
-    if (!item) return;
+    if (!item) {
+        return;
+    }
     
-    // Find the matching key in our key map
+    // Get the key ID from the editor tree item
+    const int keyId = item->data(0, Qt::UserRole).toInt();
+    
+    // Find the matching key in our key map by ID
     for (auto it = keyMap.begin(); it != keyMap.end(); ++it) {
-        if (it.value()->getName() == item->text(0)) {
+        if (it.value()->getID() == keyId) {
             it.key()->setCheckState(0, Qt::Checked);
             break;
         }
@@ -800,6 +828,9 @@ void dlgPackageExporter::slot_exportPackage()
                 mCancelButton->setVisible(false);
                 mCloseButton->setVisible(true);
                 QApplication::restoreOverrideCursor();
+                
+                // Clean up the watcher
+                watcher->deleteLater();
             });
             watcher->setFuture(future);
         }
