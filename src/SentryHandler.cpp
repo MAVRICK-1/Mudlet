@@ -234,8 +234,7 @@ void SentryHandler::captureMessage(const QString& message, const QString& level)
     sentry_capture_event(sentry_value_new_message_event(
         sentryLevel,
         "mudlet",
-        message.toUtf8().constData()
-    ));
+        message.toUtf8().constData()));
 #else
     Q_UNUSED(message)
     Q_UNUSED(level)

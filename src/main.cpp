@@ -239,12 +239,8 @@ int main(int argc, char* argv[])
     // This should be done after QApplication creation for proper Qt integration
     SentryHandler::instance().initialize();
     
-    // Set the user information for crash reports
-    SentryHandler::instance().setUser(
-        QStringLiteral("rishi-mondal"),
-        QStringLiteral("Rishi Mondal"),
-        QStringLiteral("mavrickrishi@gmail.com")
-    );
+    // Initialize Sentry with default configuration
+    // User information can be set later via configuration or user preferences
 
     QAccessible::installFactory(TAccessibleConsole::consoleFactory);
     QAccessible::installFactory(TAccessibleTextEdit::textEditFactory);
