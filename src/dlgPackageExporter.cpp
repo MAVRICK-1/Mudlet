@@ -251,7 +251,9 @@ void dlgPackageExporter::preselectTrigger(QTreeWidgetItem* item)
 
 void dlgPackageExporter::preselectTimer(QTreeWidgetItem* item)
 {
-    if (!item) return;
+    if (!item) {
+      return;
+    }
     
     // Find the matching timer in our timer map
     for (auto it = timerMap.begin(); it != timerMap.end(); ++it) {
