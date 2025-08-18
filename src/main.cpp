@@ -448,11 +448,7 @@ int main(int argc, char* argv[])
             if (!firstInstanceOfMudlet) {
                 instanceCoordinator->queuePackage(firstArg);
                 const bool successful = instanceCoordinator->installPackagesRemotely();
-                if (successful) {
-                    return 0;
-                } else {
-                    return 1;
-                }
+                return successful ? 0 : 1;
             }
         } else {
             // It's a package file
@@ -460,11 +456,7 @@ int main(int argc, char* argv[])
             instanceCoordinator->queuePackage(absPath);
             if (!firstInstanceOfMudlet) {
                 const bool successful = instanceCoordinator->installPackagesRemotely();
-                if (successful) {
-                    return 0;
-                } else {
-                    return 1;
-                }
+                return successful ? 0 : 1;
             }
         }
     }
@@ -701,15 +693,32 @@ int main(int argc, char* argv[])
 
 #if defined(Q_OS_WIN)
     // Associate mudlet with .mpackage files
-    QSettings settings("HKEY_CLASSES_ROOT", QSettings::NativeFormat);
-    settings.setValue(".mpackage", "MudletPackage");
-    settings.setValue("MudletPackage/.", "Mudlet Package");
-    settings.setValue("MudletPackage/shell/open/command/.", "mudlet %1");
+    QSettings registrySettings("HKEY_CLASSES_ROOT", QSettings::NativeFormat);
+    registrySettings.setValue(".mpackage", "MudletPackage");
+    registrySettings.setValue("MudletPackage/.", "Mudlet Package");
+    registrySettings.setValue("MudletPackage/shell/open/command/.", "mudlet %1");
     
-    // Register telnet:// URI handler
-    settings.setValue("telnet/.", "URL:Telnet Protocol");
-    settings.setValue("telnet/URL Protocol", "");
-    settings.setValue("telnet/shell/open/command/.", QString("\"%1\" \"%2\"").arg(QCoreApplication::applicationFilePath().replace("/", "\\")).arg("%1"));
+    // Check if user wants to register telnet:// URI handler
+    QSettings mudletSettings;
+    bool shouldRegisterTelnetHandler = mudletSettings.value("registerTelnetUrlHandler", true).toBool();
+    
+    if (shouldRegisterTelnetHandler) {
+        // Check if another application has already registered for telnet://
+        QString existingHandler = registrySettings.value("telnet/shell/open/command/.").toString();
+        QString mudletPath = QCoreApplication::applicationFilePath().replace("/", "\\");
+        
+        // Only register if no handler exists or if Mudlet is already the handler
+        if (existingHandler.isEmpty() || existingHandler.contains(mudletPath, Qt::CaseInsensitive)) {
+            // Register telnet:// URI handler
+            registrySettings.setValue("telnet/.", "URL:Telnet Protocol");
+            registrySettings.setValue("telnet/URL Protocol", "");
+            registrySettings.setValue("telnet/shell/open/command/.", QString("\"%1\" \"%2\"").arg(mudletPath).arg("%1"));
+        } else {
+            // Another app is registered, respect that and disable our setting
+            mudletSettings.setValue("registerTelnetUrlHandler", false);
+            qDebug() << "Another application is registered for telnet:// URLs. Mudlet will not override it.";
+        }
+    }
 #endif
 
     // Pass ownership of MudletInstanceCoordinator to mudlet.

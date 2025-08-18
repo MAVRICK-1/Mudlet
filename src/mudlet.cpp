@@ -29,6 +29,7 @@
 #include "mudlet.h"
 
 #include "AltFocusMenuBarDisable.h"
+#include <climits>
 #include "EAction.h"
 #include "LuaInterface.h"
 #include "TCommandLine.h"
@@ -3744,6 +3745,29 @@ void mudlet::startAutoLogin(const QStringList& cliProfiles)
     }
 }
 
+QString mudlet::sanitizeProfileName(const QString& name)
+{
+    // Allowed characters for profile names based on dlgConnectionProfiles::validateProfile()
+    const QString allowedChars = qsl(". _0123456789-#&aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ");
+    QString sanitized;
+    
+    for (const QChar& ch : name) {
+        if (allowedChars.contains(ch)) {
+            sanitized.append(ch);
+        } else {
+            // Replace invalid characters with underscore
+            sanitized.append('_');
+        }
+    }
+    
+    // Ensure the name is not empty
+    if (sanitized.isEmpty()) {
+        sanitized = qsl("telnet_connection");
+    }
+    
+    return sanitized;
+}
+
 void mudlet::handleTelnetUri(const QString& uri)
 {
     // Parse telnet:// URI format: telnet://host[:port]
@@ -3751,30 +3775,43 @@ void mudlet::handleTelnetUri(const QString& uri)
         return;
     }
     
+    // Ask user for confirmation before opening telnet link
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        nullptr,
+        tr("Open Telnet Link"),
+        tr("You are about to open a telnet connection to:\n%1\n\nDo you want to proceed?").arg(uri),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
+    
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+    
     QString connectionString = uri.mid(9); // Remove "telnet://"
-    QString host;
+    QString hostAddress;
     int port = 23; // Default telnet port
     
     // Parse host and optional port
     int colonIndex = connectionString.indexOf(':');
     if (colonIndex != -1) {
-        host = connectionString.left(colonIndex);
-        bool ok;
+        hostAddress = connectionString.left(colonIndex);
+        bool ok = false;
         port = connectionString.mid(colonIndex + 1).toInt(&ok);
-        if (!ok) {
-            port = 23; // Fall back to default if port parsing fails
+        if (!ok || port < 1 || port > USHRT_MAX) {
+            port = 23; // Fall back to default if port parsing fails or is out of range
         }
     } else {
-        host = connectionString;
+        hostAddress = connectionString;
     }
     
     // Remove any trailing slashes or paths
-    int slashIndex = host.indexOf('/');
+    int slashIndex = hostAddress.indexOf('/');
     if (slashIndex != -1) {
-        host = host.left(slashIndex);
+        hostAddress = hostAddress.left(slashIndex);
     }
     
-    if (host.isEmpty()) {
+    if (hostAddress.isEmpty()) {
         return;
     }
     
@@ -3789,14 +3826,14 @@ void mudlet::handleTelnetUri(const QString& uri)
         QString profileHost = readProfileData(profileName, qsl("url"));
         QString profilePortStr = readProfileData(profileName, qsl("port"));
         
-        bool ok;
+        bool ok = false;
         int profilePort = profilePortStr.toInt(&ok);
-        if (!ok) {
+        if (!ok || profilePort < 1 || profilePort > USHRT_MAX) {
             profilePort = 23;
         }
         
-        // Check if this profile matches the telnet URI
-        if (profileHost == host && profilePort == port) {
+        // Check if this profile matches the telnet URI (case-insensitive comparison for host)
+        if (profileHost.compare(hostAddress, Qt::CaseInsensitive) == 0 && profilePort == port) {
             // Check last modified time of profile directory
             QFileInfo profileInfo(getMudletPath(enums::profileDataItemPath, profileName, QString()));
             QDateTime modifiedTime = profileInfo.lastModified();
@@ -3813,15 +3850,15 @@ void mudlet::handleTelnetUri(const QString& uri)
         doAutoLogin(matchingProfile);
     } else {
         // Create a new profile for this connection
-        QString newProfileName = host;
+        QString newProfileName = sanitizeProfileName(hostAddress);
         if (port != 23) {
-            newProfileName += qsl(":%1").arg(port);
+            newProfileName += qsl("-%1").arg(port); // Use dash instead of colon (colon not allowed in profile names)
         }
         
         // Ensure unique profile name
         QString baseName = newProfileName;
         int counter = 2;
-        while (profileList.contains(newProfileName)) {
+        while (profileList.contains(newProfileName, Qt::CaseInsensitive)) {
             newProfileName = qsl("%1 (%2)").arg(baseName).arg(counter++);
         }
         
@@ -3829,7 +3866,7 @@ void mudlet::handleTelnetUri(const QString& uri)
         QDir dir;
         if (dir.mkpath(getMudletPath(enums::profileHomePath, newProfileName))) {
             // Save connection settings
-            writeProfileData(newProfileName, qsl("url"), host);
+            writeProfileData(newProfileName, qsl("url"), hostAddress);
             writeProfileData(newProfileName, qsl("port"), QString::number(port));
             
             // Load the new profile and connect

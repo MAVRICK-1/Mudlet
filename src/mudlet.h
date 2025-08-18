@@ -324,6 +324,7 @@ public:
     void showOptionsDialog(const QString&);
     void startAutoLogin(const QStringList&);
     void handleTelnetUri(const QString& uri);
+    QString sanitizeProfileName(const QString& name);
     bool storingPasswordsSecurely() const { return mStorePasswordsSecurely; }
     enums::controlsVisibility toolBarVisibility() const { return mToolbarVisibility; }
     void updateDiscordNamedIcon();
