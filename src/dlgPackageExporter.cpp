@@ -187,7 +187,7 @@ void dlgPackageExporter::setModuleCreationMode(bool isModule)
         ui->pushButton_openInfos->setText(tr("Add module description, icon, and assets (optional)"));
         
         // Update the export location widget to be more descriptive
-        ui->lineEdit_filePath->setPlaceholderText(tr("Module will be saved here"));
+        ui->lineEdit_filePath->setPlaceholderText(tr("Module location"));
         
         // Update info label if visible
         ui->infoLabel->setText(tr(""));
