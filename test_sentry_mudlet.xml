@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+    <TriggerPackage>
+        <TriggerGroup isActive="yes" isFolder="yes" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+            <name>Sentry Test Triggers</name>
+            <script></script>
+            <triggerType>0</triggerType>
+            <conditonLineDelta>0</conditonLineDelta>
+            <mStayOpen>0</mStayOpen>
+            <mCommand></mCommand>
+            <packageName></packageName>
+            <mFgColor>#ff0000</mFgColor>
+            <mBgColor>#ffff00</mBgColor>
+            <mSoundFile></mSoundFile>
+            <colorTriggerFgColor>#000000</colorTriggerFgColor>
+            <colorTriggerBgColor>#000000</colorTriggerBgColor>
+            <regexCodeList />
+            <regexCodePropertyList />
+        </TriggerGroup>
+    </TriggerPackage>
+    
+    <AliasPackage>
+        <AliasGroup isActive="yes" isFolder="yes">
+            <name>Sentry Crash Tests</name>
+            <script></script>
+            <command></command>
+            <packageName></packageName>
+            <regex></regex>
+            
+            <Alias isActive="yes" isFolder="no">
+                <name>Test Sentry Info</name>
+                <script>
+print("================================")
+print("SENTRY CRASH REPORTING TEST")
+print("================================")
+print("Sentry should be initialized and running")
+print("")
+print("Available test commands:")
+print("  sentry info    - Show this info")
+print("  sentry test    - Send a test message to Sentry")
+print("  sentry bread   - Add a breadcrumb")
+print("  sentry crash1  - Test null pointer crash (WILL CRASH!)")
+print("  sentry crash2  - Test division by zero (WILL CRASH!)")
+print("  sentry crash3  - Test stack overflow (WILL CRASH!)")
+print("")
+print("WARNING: crash commands will terminate Mudlet!")
+print("================================")
+                </script>
+                <command></command>
+                <packageName></packageName>
+                <regex>^sentry info$</regex>
+            </Alias>
+            
+            <Alias isActive="yes" isFolder="no">
+                <name>Test Sentry Message</name>
+                <script>
+print("Sending test message to Sentry...")
+-- This would need C++ integration to actually send to Sentry
+-- For now we simulate it
+print("TEST: Would send message: 'Mudlet Sentry test message from " .. os.date() .. "'")
+print("In a real implementation, this would call SentryHandler::captureMessage()")
+                </script>
+                <command></command>
+                <packageName></packageName>
+                <regex>^sentry test$</regex>
+            </Alias>
+            
+            <Alias isActive="yes" isFolder="no">
+                <name>Add Breadcrumb</name>
+                <script>
+local breadcrumb = "User action at " .. os.date()
+print("Adding breadcrumb: " .. breadcrumb)
+-- This would call SentryHandler::addBreadcrumb() in C++
+print("TEST: Breadcrumb added (would be sent with next crash)")
+                </script>
+                <command></command>
+                <packageName></packageName>
+                <regex>^sentry bread$</regex>
+            </Alias>
+            
+            <Alias isActive="yes" isFolder="no">
+                <name>Crash Test 1</name>
+                <script>
+print("================================")
+print("WARNING: CRASH TEST 1 - NULL POINTER")
+print("This WILL crash Mudlet in 3 seconds!")
+print("================================")
+tempTimer(3, function()
+    -- Force a crash by calling a nil function
+    -- This will generate an error that should be caught by Sentry
+    local x = nil
+    x()
+end)
+                </script>
+                <command></command>
+                <packageName></packageName>
+                <regex>^sentry crash1$</regex>
+            </Alias>
+            
+            <Alias isActive="yes" isFolder="no">
+                <name>Crash Test 2</name>
+                <script>
+print("================================")
+print("WARNING: CRASH TEST 2 - LUA ERROR")
+print("This will trigger a Lua error in 3 seconds!")
+print("================================")
+tempTimer(3, function()
+    error("SENTRY TEST: Intentional Lua error for crash reporting test")
+end)
+                </script>
+                <command></command>
+                <packageName></packageName>
+                <regex>^sentry crash2$</regex>
+            </Alias>
+            
+            <Alias isActive="yes" isFolder="no">
+                <name>Crash Test 3</name>
+                <script>
+print("================================")
+print("WARNING: CRASH TEST 3 - STACK OVERFLOW")
+print("This WILL crash Mudlet in 3 seconds!")
+print("================================")
+tempTimer(3, function()
+    -- Infinite recursion to cause stack overflow
+    local function overflow()
+        overflow()
+    end
+    overflow()
+end)
+                </script>
+                <command></command>
+                <packageName></packageName>
+                <regex>^sentry crash3$</regex>
+            </Alias>
+        </AliasGroup>
+    </AliasPackage>
+    
+    <ScriptPackage>
+        <ScriptGroup isActive="yes" isFolder="yes">
+            <name>Sentry Test Scripts</name>
+            <packageName></packageName>
+            <script></script>
+            <eventHandlerList />
+            
+            <Script isActive="yes" isFolder="no">
+                <name>Sentry UI Setup</name>
+                <packageName></packageName>
+                <script>
+-- Create a simple UI for Sentry testing
+function setupSentryTestUI()
+    -- Create main container
+    createLabel("SentryContainer", 0, 0, 300, 250, 0)
+    setLabelStyleSheet("SentryContainer", [[
+        background-color: #2c3e50;
+        border: 2px solid #34495e;
+        border-radius: 10px;
+    ]])
+    moveWindow("SentryContainer", 10, 50)
+    
+    -- Title
+    createLabel("SentryTitle", 10, 10, 280, 30, 0)
+    setLabelText("SentryTitle", "&lt;center&gt;&lt;b&gt;SENTRY CRASH TEST&lt;/b&gt;&lt;/center&gt;")
+    setLabelStyleSheet("SentryTitle", [[
+        color: #ecf0f1;
+        font-size: 14pt;
+        background-color: transparent;
+    ]])
+    setParent("SentryTitle", "SentryContainer")
+    
+    -- Info button
+    createLabel("SentryInfoBtn", 10, 50, 280, 30, 0)
+    setLabelText("SentryInfoBtn", "&lt;center&gt;Show Info&lt;/center&gt;")
+    setLabelStyleSheet("SentryInfoBtn", [[
+        background-color: #3498db;
+        color: white;
+        border-radius: 5px;
+        font-weight: bold;
+    ]])
+    setParent("SentryInfoBtn", "SentryContainer")
+    setLabelClickCallback("SentryInfoBtn", function() send("sentry info") end)
+    
+    -- Test message button
+    createLabel("SentryTestBtn", 10, 90, 280, 30, 0)
+    setLabelText("SentryTestBtn", "&lt;center&gt;Send Test Message&lt;/center&gt;")
+    setLabelStyleSheet("SentryTestBtn", [[
+        background-color: #27ae60;
+        color: white;
+        border-radius: 5px;
+        font-weight: bold;
+    ]])
+    setParent("SentryTestBtn", "SentryContainer")
+    setLabelClickCallback("SentryTestBtn", function() send("sentry test") end)
+    
+    -- Breadcrumb button
+    createLabel("SentryBreadBtn", 10, 130, 280, 30, 0)
+    setLabelText("SentryBreadBtn", "&lt;center&gt;Add Breadcrumb&lt;/center&gt;")
+    setLabelStyleSheet("SentryBreadBtn", [[
+        background-color: #f39c12;
+        color: white;
+        border-radius: 5px;
+        font-weight: bold;
+    ]])
+    setParent("SentryBreadBtn", "SentryContainer")
+    setLabelClickCallback("SentryBreadBtn", function() send("sentry bread") end)
+    
+    -- Crash button (dangerous!)
+    createLabel("SentryCrashBtn", 10, 170, 280, 30, 0)
+    setLabelText("SentryCrashBtn", "&lt;center&gt;⚠ TRIGGER CRASH ⚠&lt;/center&gt;")
+    setLabelStyleSheet("SentryCrashBtn", [[
+        background-color: #e74c3c;
+        color: white;
+        border-radius: 5px;
+        font-weight: bold;
+    ]])
+    setParent("SentryCrashBtn", "SentryContainer")
+    setLabelClickCallback("SentryCrashBtn", function() 
+        if yesno("This will crash Mudlet! Are you sure?") then
+            send("sentry crash2")
+        end
+    end)
+    
+    -- Warning text
+    createLabel("SentryWarning", 10, 210, 280, 30, 0)
+    setLabelText("SentryWarning", "&lt;center&gt;&lt;i&gt;Crash tests will terminate Mudlet!&lt;/i&gt;&lt;/center&gt;")
+    setLabelStyleSheet("SentryWarning", [[
+        color: #e74c3c;
+        background-color: transparent;
+        font-size: 9pt;
+    ]])
+    setParent("SentryWarning", "SentryContainer")
+    
+    print("Sentry Test UI created! Look for the panel on the left side.")
+end
+
+-- Auto-setup on load
+registerAnonymousEventHandler("sysLoadEvent", function()
+    tempTimer(1, function()
+        setupSentryTestUI()
+        print("================================")
+        print("SENTRY CRASH REPORTING TEST LOADED")
+        print("Type 'sentry info' for help")
+        print("================================")
+    end)
+end)
+
+-- Setup immediately if already connected
+if getCurrentLine() then
+    setupSentryTestUI()
+end
+                </script>
+                <eventHandlerList>
+                    <string>sysLoadEvent</string>
+                </eventHandlerList>
+            </Script>
+        </ScriptGroup>
+    </ScriptPackage>
+</MudletPackage>
