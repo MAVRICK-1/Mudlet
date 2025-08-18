@@ -601,6 +601,7 @@ SOURCES += \
     dlgIRC.cpp \
     dlgKeysMainArea.cpp \
     dlgModuleManager.cpp \
+    dlgMxpRecovery.cpp \
     dlgMapLabel.cpp \
     dlgMapper.cpp \
     dlgNotepad.cpp \
@@ -737,6 +738,7 @@ HEADERS += \
     dlgMapLabel.h \
     dlgMapper.h \
     dlgModuleManager.h \
+    dlgMxpRecovery.h \
     dlgNotepad.h \
     dlgPackageExporter.h \
     dlgPackageManager.h \
