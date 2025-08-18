@@ -60,6 +60,7 @@ set(mudlet_SRCS
     DarkTheme.cpp
     discord.cpp
     dlgAboutDialog.cpp
+    SentryHandler.cpp
     dlgActionMainArea.cpp
     dlgAliasMainArea.cpp
     dlgColorTrigger.cpp
@@ -249,6 +250,7 @@ set(mudlet_HDRS
     DarkTheme.h
     discord.h
     dlgAboutDialog.h
+    SentryHandler.h
     dlgActionMainArea.h
     dlgAliasMainArea.h
     dlgColorTrigger.h
@@ -469,6 +471,24 @@ find_package(PUGIXML REQUIRED)
 find_package(HUNSPELL REQUIRED)
 find_package(Boost 1.44)
 
+# Optional Sentry crash reporting support
+option(USE_SENTRY "Enable Sentry crash reporting" ON)
+if(USE_SENTRY)
+  # Look for Sentry in the user's local installation first
+  set(CMAKE_PREFIX_PATH "/home/mavrick/.local" ${CMAKE_PREFIX_PATH})
+  find_package(sentry CONFIG PATHS /home/mavrick/.local/lib/cmake/sentry NO_DEFAULT_PATH)
+  if(NOT sentry_FOUND)
+    find_package(sentry CONFIG)
+  endif()
+  
+  if(sentry_FOUND)
+    message(STATUS "Sentry SDK found, crash reporting will be enabled")
+  else()
+    message(STATUS "Sentry SDK not found, crash reporting will be disabled")
+    set(USE_SENTRY OFF)
+  endif()
+endif()
+
 
 # FreeBSD's sysinfo() call is done in a package, libsysinfo.
 # Find the library and include it appropriately.
@@ -591,6 +611,22 @@ if(USE_OWN_QTKEYCHAIN)
     target_compile_definitions(mudlet PRIVATE INCLUDE_OWN_QT6_KEYCHAIN QTKEYCHAIN_NO_EXPORT)
 endif()
 
+if(USE_SENTRY)
+    target_compile_definitions(mudlet PRIVATE USE_SENTRY)
+    if(NOT DEFINED MUDLET_SENTRY_DSN)
+        set(MUDLET_SENTRY_DSN "https://YOUR_DSN_HERE@sentry.io/YOUR_PROJECT_ID")
+    endif()
+    target_compile_definitions(mudlet PRIVATE MUDLET_SENTRY_DSN="${MUDLET_SENTRY_DSN}")
+    
+    # Optional: Enable crash tests for debugging (NEVER enable in production!)
+    option(ENABLE_CRASH_TESTS "Enable crash test scenarios (DEBUG ONLY!)" OFF)
+    if(ENABLE_CRASH_TESTS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_sources(mudlet PRIVATE test_crash_scenarios.cpp)
+        target_compile_definitions(mudlet PRIVATE ENABLE_CRASH_TESTS)
+        message(WARNING "Crash tests enabled - DO NOT use in production!")
+    endif()
+endif()
+
 # Used to force an include of winsock2.h BEFORE Qt tries to include winsock.h
 # from windows.h - only needed on Windows builds but we cannot use Q_OS_WINDOWS
 # for an #ifdef because we need a symbol that is defined BEFORE we include
@@ -630,6 +666,10 @@ if(USE_UPDATER)
   target_link_libraries(mudlet dblsqd)
   target_compile_definitions(mudlet PRIVATE INCLUDE_UPDATER)
 endif(USE_UPDATER)
+
+if(USE_SENTRY)
+  target_link_libraries(mudlet sentry::sentry)
+endif(USE_SENTRY)
 
 if(USE_3DMAPPER)
   target_link_libraries(mudlet OpenGL::GLU)

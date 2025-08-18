@@ -25,6 +25,7 @@
 #include "HostManager.h"
 #include "mudlet.h"
 #include "MudletInstanceCoordinator.h"
+#include "SentryHandler.h"
 #include "pre_guard.h"
 #include <chrono>
 #include <QCommandLineParser>
@@ -233,6 +234,17 @@ int main(int argc, char* argv[])
 #endif
 
     auto app = qobject_cast<QApplication*>(new QApplication(argc, argv));
+
+    // Initialize Sentry crash reporting as early as possible
+    // This should be done after QApplication creation for proper Qt integration
+    SentryHandler::instance().initialize();
+    
+    // Set the user information for crash reports
+    SentryHandler::instance().setUser(
+        QStringLiteral("rishi-mondal"),
+        QStringLiteral("Rishi Mondal"),
+        QStringLiteral("mavrickrishi@gmail.com")
+    );
 
     QAccessible::installFactory(TAccessibleConsole::consoleFactory);
     QAccessible::installFactory(TAccessibleTextEdit::textEditFactory);

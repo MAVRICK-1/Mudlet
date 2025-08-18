@@ -593,6 +593,7 @@ SOURCES += \
     ctelnet.cpp \
     discord.cpp \
     dlgAboutDialog.cpp \
+    SentryHandler.cpp \
     dlgActionMainArea.cpp \
     dlgAliasMainArea.cpp \
     dlgColorTrigger.cpp \
@@ -729,6 +730,7 @@ HEADERS += \
     DarkTheme.h \
     discord.h \
     dlgAboutDialog.h \
+    SentryHandler.h \
     dlgActionMainArea.h \
     dlgAliasMainArea.h \
     dlgColorTrigger.h \
