@@ -638,6 +638,8 @@ SOURCES += \
     MudletInstanceCoordinator.cpp \
     MxpTag.cpp \
     ScriptUnit.cpp \
+    SecureStringUtils.cpp \
+    CredentialManager.cpp \
     ShortcutsManager.cpp \
     SingleLineTextEdit.cpp \
     T2DMap.cpp \
@@ -773,6 +775,8 @@ HEADERS += \
     pre_guard.h \
     post_guard.h \
     ScriptUnit.h \
+    SecureStringUtils.h \
+    CredentialManager.h \
     ShortcutsManager.h \
     SingleLineTextEdit.h \
     T2DMap.h \
@@ -1689,6 +1693,8 @@ OTHER_FILES += \
     ../docker/Dockerfile \
     ../test/CMakeLists.txt \
     ../test/GUIConsoleTests.mpackage \
+    ../test/CredentialManagerTest.cpp \
+    ../test/SecureStringUtilsTest.cpp \
     ../test/TEntityHandlerTest.cpp \
     ../test/TEntityResolverTest.cpp \
     ../test/TLinkStoreTest.cpp \
