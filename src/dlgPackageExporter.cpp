@@ -827,7 +827,13 @@ void dlgPackageExporter::slot_exportPackage()
     }
 
     // if packageName changed allow to create a new package in the same path
-    mPackagePathFileName = qsl("%1/%2.mpackage").arg(getActualPath(), mPackageName);
+    if (mIsModuleCreationMode) {
+        // For modules, save to the profile directory instead of user's last dialog location
+        QString profileDir = mudlet::getMudletPath(enums::profileHomePath, mpHost->getName());
+        mPackagePathFileName = qsl("%1/%2.mpackage").arg(profileDir, mPackageName);
+    } else {
+        mPackagePathFileName = qsl("%1/%2.mpackage").arg(getActualPath(), mPackageName);
+    }
 
     // QT Docs say that QStandardPaths::writableLocation(QStandardPaths::TempLocation)
     // "Returns a directory where temporary files can be stored. The returned
