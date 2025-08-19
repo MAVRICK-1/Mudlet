@@ -38,7 +38,9 @@
 #include <QDirIterator>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QMessageBox>
 #include <QMimeData>
+#include <QTimer>
 #include "post_guard.h"
 
 // We are now using code that won't work with really old versions of libzip;
@@ -245,6 +247,11 @@ void dlgPackageExporter::preselectTrigger(QTreeWidgetItem* item)
     // Get the trigger ID from the editor tree item
     const int triggerId = item->data(0, Qt::UserRole).toInt();
     
+    // Don't select anything if the ID is invalid (0 or negative)
+    if (triggerId <= 0) {
+        return;
+    }
+    
     // Find the matching trigger in our trigger map by ID
     for (auto it = triggerMap.begin(); it != triggerMap.end(); ++it) {
         if (it.value()->getID() == triggerId) {
@@ -262,6 +269,11 @@ void dlgPackageExporter::preselectTimer(QTreeWidgetItem* item)
     
     // Get the timer ID from the editor tree item
     const int timerId = item->data(0, Qt::UserRole).toInt();
+    
+    // Don't select anything if the ID is invalid (0 or negative)
+    if (timerId <= 0) {
+        return;
+    }
     
     // Find the matching timer in our timer map by ID
     for (auto it = timerMap.begin(); it != timerMap.end(); ++it) {
@@ -281,6 +293,11 @@ void dlgPackageExporter::preselectAlias(QTreeWidgetItem* item)
     // Get the alias ID from the editor tree item
     const int aliasId = item->data(0, Qt::UserRole).toInt();
     
+    // Don't select anything if the ID is invalid (0 or negative)
+    if (aliasId <= 0) {
+        return;
+    }
+    
     // Find the matching alias in our alias map by ID
     for (auto it = aliasMap.begin(); it != aliasMap.end(); ++it) {
         if (it.value()->getID() == aliasId) {
@@ -298,6 +315,11 @@ void dlgPackageExporter::preselectScript(QTreeWidgetItem* item)
     
     // Get the script ID from the editor tree item
     const int scriptId = item->data(0, Qt::UserRole).toInt();
+    
+    // Don't select anything if the ID is invalid (0 or negative)
+    if (scriptId <= 0) {
+        return;
+    }
     
     // Find the matching script in our script map by ID
     for (auto it = scriptMap.begin(); it != scriptMap.end(); ++it) {
@@ -317,6 +339,11 @@ void dlgPackageExporter::preselectAction(QTreeWidgetItem* item)
     // Get the action ID from the editor tree item
     const int actionId = item->data(0, Qt::UserRole).toInt();
     
+    // Don't select anything if the ID is invalid (0 or negative)
+    if (actionId <= 0) {
+        return;
+    }
+    
     // Find the matching action in our action map by ID
     for (auto it = actionMap.begin(); it != actionMap.end(); ++it) {
         if (it.value()->getID() == actionId) {
@@ -334,6 +361,11 @@ void dlgPackageExporter::preselectKey(QTreeWidgetItem* item)
     
     // Get the key ID from the editor tree item
     const int keyId = item->data(0, Qt::UserRole).toInt();
+    
+    // Don't select anything if the ID is invalid (0 or negative)
+    if (keyId <= 0) {
+        return;
+    }
     
     // Find the matching key in our key map by ID
     for (auto it = keyMap.begin(); it != keyMap.end(); ++it) {
@@ -810,13 +842,65 @@ void dlgPackageExporter::slot_exportPackage()
                     if (mIsModuleCreationMode) {
                         auto [installSuccess, installMessage] = mpHost->installPackage(mPackagePathFileName, enums::PackageModuleType::ModuleFromUI);
                         if (installSuccess) {
-                            displayResultMessage(tr("Module \"%1\" created and installed successfully!")
-                                                         .arg(mPackageName.toHtmlEscaped()),
-                                                 true);
+                            // Show success dialog
+                            QMessageBox successBox(this);
+                            successBox.setWindowTitle(tr("Module Created"));
+                            successBox.setText(tr("Module \"%1\" created successfully!").arg(mPackageName.toHtmlEscaped()));
+                            successBox.setInformativeText(tr("The module has been created and installed."));
+                            successBox.setIcon(QMessageBox::Information);
+                            successBox.setStandardButtons(QMessageBox::Ok);
+                            successBox.exec();
+                            
+                            // Close the dialog after successful module creation to prevent duplicates
+                            this->accept();
                         } else {
-                            displayResultMessage(tr("Module \"%1\" exported but installation failed: %2")
-                                                         .arg(mPackageName.toHtmlEscaped(), installMessage.toHtmlEscaped()),
-                                                 false);
+                            // Check if it's a duplicate module error
+                            if (installMessage.contains("already installed")) {
+                                QMessageBox msgBox(this);
+                                msgBox.setWindowTitle(tr("Module Already Exists"));
+                                msgBox.setText(tr("A module named \"%1\" is already installed.").arg(mPackageName.toHtmlEscaped()));
+                                msgBox.setInformativeText(tr("Do you want to overwrite the existing module?"));
+                                msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+                                msgBox.setDefaultButton(QMessageBox::No);
+                                msgBox.setIcon(QMessageBox::Question);
+                                
+                                if (msgBox.exec() == QMessageBox::Yes) {
+                                    // User chose to overwrite - uninstall first, then reinstall
+                                    if (mpHost->uninstallPackage(mPackageName, enums::PackageModuleType::ModuleFromUI)) {
+                                        auto [retrySuccess, retryMessage] = mpHost->installPackage(mPackagePathFileName, enums::PackageModuleType::ModuleFromUI);
+                                        if (retrySuccess) {
+                                            // Show success dialog for overwrite
+                                            QMessageBox successBox(this);
+                                            successBox.setWindowTitle(tr("Module Overwritten"));
+                                            successBox.setText(tr("Module \"%1\" overwritten successfully!").arg(mPackageName.toHtmlEscaped()));
+                                            successBox.setInformativeText(tr("The existing module has been replaced."));
+                                            successBox.setIcon(QMessageBox::Information);
+                                            successBox.setStandardButtons(QMessageBox::Ok);
+                                            successBox.exec();
+                                            
+                                            // Close the dialog after successful module overwrite to prevent duplicates
+                                            this->accept();
+                                        } else {
+                                            displayResultMessage(tr("Module \"%1\" exported but installation failed: %2")
+                                                                         .arg(mPackageName.toHtmlEscaped(), retryMessage.toHtmlEscaped()),
+                                                                 false);
+                                        }
+                                    } else {
+                                        displayResultMessage(tr("Module \"%1\" exported but failed to uninstall existing version")
+                                                                     .arg(mPackageName.toHtmlEscaped()),
+                                                             false);
+                                    }
+                                } else {
+                                    // User chose not to overwrite
+                                    displayResultMessage(tr("Module \"%1\" exported successfully but not installed (already exists)")
+                                                                 .arg(mPackageName.toHtmlEscaped()),
+                                                         true);
+                                }
+                            } else {
+                                displayResultMessage(tr("Module \"%1\" exported but installation failed: %2")
+                                                             .arg(mPackageName.toHtmlEscaped(), installMessage.toHtmlEscaped()),
+                                                     false);
+                            }
                         }
                     } else {
                         displayResultMessage(tr("Package \"%1\" exported to: %2")
