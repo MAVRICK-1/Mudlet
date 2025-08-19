@@ -2088,6 +2088,19 @@ std::pair<bool, QString> Host::installPackage(const QString& fileName, enums::Pa
     if (mpPackageManager) {
         mpPackageManager->resetPackageTable();
     }
+    if (mpModuleManager) {
+        mpModuleManager->layoutModules();
+    }
+    
+    // Save profile to ensure modules persist and appear in module manager
+    if (thing != enums::PackageModuleType::Package) {
+        // Use a timer to save profile after module installation completes
+        QTimer::singleShot(100, this, [this]() {
+            if (auto [ok, filename, error] = saveProfile(); !ok) {
+                qDebug() << qsl("Host::installPackage() - Failed to save profile after module installation: %1").arg(error);
+            }
+        });
+    }
 
     return {true, QString()};
 }

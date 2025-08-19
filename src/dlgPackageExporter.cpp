@@ -742,6 +742,90 @@ void dlgPackageExporter::slot_exportPackage()
         return;
     }
 
+    // Check if any items are selected for export
+    bool hasSelectedItems = false;
+    
+    // Check triggers
+    if (mpTriggers) {
+        QTreeWidgetItemIterator it(mpTriggers);
+        while (*it) {
+            if ((*it)->checkState(0) == Qt::Checked) {
+                hasSelectedItems = true;
+                break;
+            }
+            ++it;
+        }
+    }
+    
+    // Check timers if no triggers selected
+    if (!hasSelectedItems && mpTimers) {
+        QTreeWidgetItemIterator it(mpTimers);
+        while (*it) {
+            if ((*it)->checkState(0) == Qt::Checked) {
+                hasSelectedItems = true;
+                break;
+            }
+            ++it;
+        }
+    }
+    
+    // Check aliases if no triggers/timers selected
+    if (!hasSelectedItems && mpAliases) {
+        QTreeWidgetItemIterator it(mpAliases);
+        while (*it) {
+            if ((*it)->checkState(0) == Qt::Checked) {
+                hasSelectedItems = true;
+                break;
+            }
+            ++it;
+        }
+    }
+    
+    // Check actions if no triggers/timers/aliases selected
+    if (!hasSelectedItems && mpButtons) {
+        QTreeWidgetItemIterator it(mpButtons);
+        while (*it) {
+            if ((*it)->checkState(0) == Qt::Checked) {
+                hasSelectedItems = true;
+                break;
+            }
+            ++it;
+        }
+    }
+    
+    // Check scripts if no triggers/timers/aliases/actions selected
+    if (!hasSelectedItems && mpScripts) {
+        QTreeWidgetItemIterator it(mpScripts);
+        while (*it) {
+            if ((*it)->checkState(0) == Qt::Checked) {
+                hasSelectedItems = true;
+                break;
+            }
+            ++it;
+        }
+    }
+    
+    // Check keys if no other items selected
+    if (!hasSelectedItems && mpKeys) {
+        QTreeWidgetItemIterator it(mpKeys);
+        while (*it) {
+            if ((*it)->checkState(0) == Qt::Checked) {
+                hasSelectedItems = true;
+                break;
+            }
+            ++it;
+        }
+    }
+    
+    if (!hasSelectedItems) {
+        if (mIsModuleCreationMode) {
+            displayResultMessage(tr("Cannot create empty module. Please select at least one trigger, timer, alias, script, action, or key to include in the module."), false);
+        } else {
+            displayResultMessage(tr("Cannot create empty package. Please select at least one item to include in the package."), false);
+        }
+        return;
+    }
+
     // if packageName changed allow to create a new package in the same path
     mPackagePathFileName = qsl("%1/%2.mpackage").arg(getActualPath(), mPackageName);
 
@@ -842,17 +926,14 @@ void dlgPackageExporter::slot_exportPackage()
                     if (mIsModuleCreationMode) {
                         auto [installSuccess, installMessage] = mpHost->installPackage(mPackagePathFileName, enums::PackageModuleType::ModuleFromUI);
                         if (installSuccess) {
-                            // Show success dialog
-                            QMessageBox successBox(this);
-                            successBox.setWindowTitle(tr("Module Created"));
-                            successBox.setText(tr("Module \"%1\" created successfully!").arg(mPackageName.toHtmlEscaped()));
-                            successBox.setInformativeText(tr("The module has been created and installed."));
-                            successBox.setIcon(QMessageBox::Information);
-                            successBox.setStandardButtons(QMessageBox::Ok);
-                            successBox.exec();
+                            // Show embedded success message (better UX than popup)
+                            displayResultMessage(tr("Module \"%1\" created and installed successfully! You can now close this dialog.")
+                                                         .arg(mPackageName.toHtmlEscaped()),
+                                                 true);
                             
-                            // Close the dialog after successful module creation to prevent duplicates
-                            this->accept();
+                            // Clear the form to allow creating another module
+                            ui->lineEdit_packageName->clear();
+                            ui->lineEdit_packageName->setFocus();
                         } else {
                             // Check if it's a duplicate module error
                             if (installMessage.contains("already installed")) {
