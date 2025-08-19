@@ -1904,7 +1904,10 @@ std::pair<bool, QString> Host::installPackage(const QString& fileName, enums::Pa
         } else if ((thing == enums::PackageModuleType::ModuleFromUI) && (mInstalledModules.contains(packageName) || mActiveModules.contains(packageName))) {
             // Check if this is just a stale reference by verifying if module files actually exist
             QString modulePath = mudlet::getMudletPath(enums::profilePackagePath, getName(), packageName);
-            if (!QDir(modulePath).exists()) {
+            QString moduleFile = mInstalledModules.value(packageName).value(0); // Get the actual file path from stored reference
+            
+            bool moduleExists = QDir(modulePath).exists() || QFile::exists(moduleFile);
+            if (!moduleExists) {
                 // Module files don't exist, clean up stale references
                 mInstalledModules.remove(packageName);
                 mActiveModules.removeAll(packageName);
@@ -2097,7 +2100,6 @@ std::pair<bool, QString> Host::installPackage(const QString& fileName, enums::Pa
         // Use a timer to save profile after module installation completes
         QTimer::singleShot(100, this, [this]() {
             if (auto [ok, filename, error] = saveProfile(); !ok) {
-                qDebug() << qsl("Host::installPackage() - Failed to save profile after module installation: %1").arg(error);
             }
         });
     }
