@@ -49,6 +49,7 @@
 #include "edbee/models/textdocumentscopes.h"
 
 #include "pre_guard.h"
+#include <QCheckBox>
 #include <QColorDialog>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -2816,6 +2817,34 @@ void dlgTriggerEditor::recursiveSearchKeys(TKey* pTriggerParent, const QString& 
     }
 }
 
+bool dlgTriggerEditor::showDeleteConfirmation(const QString& title, const QString& message)
+{
+    QSettings& settings = *mudlet::getQSettings();
+    const bool dontAskAgain = settings.value("triggerEditor/dontAskDeleteConfirmation", false).toBool();
+    
+    if (dontAskAgain) {
+        return true;
+    }
+
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+    msgBox.setIcon(QMessageBox::Question);
+
+    QCheckBox* dontAskCheckBox = new QCheckBox(tr("Don't ask again"));
+    msgBox.setCheckBox(dontAskCheckBox);
+
+    int result = msgBox.exec();
+    
+    if (dontAskCheckBox->isChecked()) {
+        settings.setValue("triggerEditor/dontAskDeleteConfirmation", true);
+    }
+    
+    return result == QMessageBox::Yes;
+}
+
 void dlgTriggerEditor::delete_alias()
 {
     QList<QTreeWidgetItem*> selectedItems = treeWidget_aliases->selectedItems();
@@ -2848,10 +2877,7 @@ void dlgTriggerEditor::delete_alias()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Alias(es)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Alias(es)"), message)) {
         return;
     }
 
@@ -2924,10 +2950,7 @@ void dlgTriggerEditor::delete_action()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Button(s)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Button(s)"), message)) {
         return;
     }
 
@@ -3011,10 +3034,7 @@ void dlgTriggerEditor::delete_variable()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Variable(s)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Variable(s)"), message)) {
         return;
     }
 
@@ -3094,10 +3114,7 @@ void dlgTriggerEditor::delete_script()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Script(s)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Script(s)"), message)) {
         return;
     }
 
@@ -3170,10 +3187,7 @@ void dlgTriggerEditor::delete_key()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Key(s)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Key(s)"), message)) {
         return;
     }
 
@@ -3246,10 +3260,7 @@ void dlgTriggerEditor::delete_trigger()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Trigger(s)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Trigger(s)"), message)) {
         return;
     }
 
@@ -3322,10 +3333,7 @@ void dlgTriggerEditor::delete_timer()
                     .arg(itemNames.join(", "));
     }
 
-    auto reply = QMessageBox::question(this, tr("Delete Timer(s)"), message,
-                                     QMessageBox::Yes | QMessageBox::No,
-                                     QMessageBox::No);
-    if (reply != QMessageBox::Yes) {
+    if (!showDeleteConfirmation(tr("Delete Timer(s)"), message)) {
         return;
     }
 
