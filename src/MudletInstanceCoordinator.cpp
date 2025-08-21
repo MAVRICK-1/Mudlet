@@ -34,6 +34,13 @@ void MudletInstanceCoordinator::queuePackage(const QString& packageName)
     mQueuedPackagePaths << packageName;
 }
 
+void MudletInstanceCoordinator::queueUriOrFile(const QString& uriOrFile)
+{
+    // This is an alias for queuePackage that makes the intent clearer
+    // when dealing with URIs vs regular file paths
+    queuePackage(uriOrFile);
+}
+
 // Install the package queue on another instance of Mudlet.
 // Returns true on success
 bool MudletInstanceCoordinator::installPackagesRemotely()
@@ -109,6 +116,13 @@ void MudletInstanceCoordinator::handleReadyRead()
     mQueuedPackagePaths << packagePaths;
     mMutex.unlock();
 
+    installPackagesLocally();
+}
+
+void MudletInstanceCoordinator::openUrisLocally()
+{
+    // This is an alias for installPackagesLocally that's more descriptive
+    // when called from URI handling contexts
     installPackagesLocally();
 }
 

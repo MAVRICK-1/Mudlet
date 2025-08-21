@@ -87,6 +87,7 @@ set(mudlet_SRCS
     dlgVarsMainArea.cpp
     EAction.cpp
     exitstreewidget.cpp
+    DefaultClientUtils.cpp
     FileOpenHandler.cpp
     FontManager.cpp
     GifTracker.cpp
@@ -276,6 +277,7 @@ set(mudlet_HDRS
     dlgVarsMainArea.h
     EAction.h
     exitstreewidget.h
+    DefaultClientUtils.h
     FileOpenHandler.h
     FontManager.h
     GifTracker.h

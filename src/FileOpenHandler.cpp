@@ -20,6 +20,7 @@
 #include "FileOpenHandler.h"
 #include "MudletInstanceCoordinator.h"
 #include "mudlet.h"
+#include <QUrl>
 
 FileOpenHandler::FileOpenHandler(QObject* parent) : QObject(parent)
 {
@@ -32,10 +33,21 @@ bool FileOpenHandler::eventFilter(QObject* obj, QEvent* event)
         QFileOpenEvent* openEvent = static_cast<QFileOpenEvent*>(event);
         Q_ASSERT(mudlet::self());
         MudletInstanceCoordinator* instanceCoordinator = mudlet::self()->getInstanceCoordinator();
-        const QString absPath = QDir(openEvent->file()).absolutePath();
-        instanceCoordinator->queuePackage(absPath);
-        instanceCoordinator->installPackagesLocally();
-        return true;
+        
+        // Check if we have a URL (e.g., telnet://) or a file
+        QUrl url = openEvent->url();
+        if (url.isValid() && (url.scheme() == qsl("telnet") || url.scheme() == qsl("mudlet"))) {
+            // Handle telnet:// or mudlet:// URI
+            instanceCoordinator->queuePackage(url.toString());
+            instanceCoordinator->installPackagesLocally();
+            return true;
+        } else if (!openEvent->file().isEmpty()) {
+            // Handle regular file
+            const QString absPath = QDir(openEvent->file()).absolutePath();
+            instanceCoordinator->queuePackage(absPath);
+            instanceCoordinator->installPackagesLocally();
+            return true;
+        }
     }
     return QObject::eventFilter(obj, event);
 }

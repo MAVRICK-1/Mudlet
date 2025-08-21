@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2023-2024 by Adam Robinson - seldon1951@hotmail.com     *
+ *   Copyright (C) 2025 by Mudlet Development Team                         *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -17,39 +17,42 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifndef MUDLETINSTANCECOORDINATOR_H
-#define MUDLETINSTANCECOORDINATOR_H
+#ifndef DEFAULTCLIENTUTILS_H
+#define DEFAULTCLIENTUTILS_H
 
-#include "Host.h"
-#include <QLocalServer>
-#include <QStringList>
+#include <QString>
 
-class MudletInstanceCoordinator : public QLocalServer
+class DefaultClientUtils
 {
-    Q_OBJECT
-
 public:
-    explicit MudletInstanceCoordinator(const QString& serverName, QObject* parent = nullptr);
-    bool tryToStart();
-    void queuePackage(const QString& packageName);
-    void queueUriOrFile(const QString& uriOrFile);
-    void installPackagesToHost(Host* activeProfile);
-    void installPackagesLocally();
-    bool installPackagesRemotely();
-    void openUrisLocally();
-    QStringList readPackageQueue();
-
-protected:
-    void incomingConnection(quintptr socketDescriptor) override;
-
-private slots:
-    void handleReadyRead();
-    void handleDisconnected();
-
+    // Get the current default telnet:// handler application
+    static QString getCurrentTelnetHandler();
+    
+    // Set Mudlet as the default telnet:// handler
+    static bool setMudletAsDefaultTelnetHandler();
+    
+    // Check if Mudlet is the default telnet:// handler
+    static bool isMudletDefaultTelnetHandler();
+    
+    // Get the Mudlet executable path appropriate for URI registration
+    static QString getMudletExecutablePath();
+    
 private:
-    QMutex mMutex;
-    QString mServerName;
-    QStringList mQueuedPackagePaths;
+    // Platform-specific implementation methods
+#ifdef Q_OS_LINUX
+    static QString getCurrentTelnetHandlerLinux();
+    static bool setMudletAsDefaultTelnetHandlerLinux();
+#endif
+    
+#ifdef Q_OS_MACOS
+    static QString getCurrentTelnetHandlerMacOS();
+    static bool setMudletAsDefaultTelnetHandlerMacOS();
+#endif
+    
+#ifdef Q_OS_WIN
+    static QString getCurrentTelnetHandlerWindows();
+    static bool setMudletAsDefaultTelnetHandlerWindows();
+#endif
 };
 
-#endif // MUDLETINSTANCECOORDINATOR_H
+#endif // DEFAULTCLIENTUTILS_H
