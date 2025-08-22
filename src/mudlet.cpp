@@ -3835,9 +3835,19 @@ void mudlet::handleTelnetUri(const QString& uri)
         
         // Check if this profile matches the telnet URI (case-insensitive comparison for host)
         if (profileHost.compare(hostAddress, Qt::CaseInsensitive) == 0 && profilePort == port) {
-            // Check last modified time of profile directory
-            QFileInfo profileInfo(getMudletPath(enums::profileDataItemPath, profileName, QString()));
-            QDateTime modifiedTime = profileInfo.lastModified();
+            // Check last modified time of current directory (most recent session)
+            QString currentPath = getMudletPath(enums::profileDataItemPath, profileName, qsl("current"));
+            QFileInfo currentInfo(currentPath);
+            QDateTime modifiedTime;
+            
+            if (currentInfo.exists()) {
+                // Use the current directory's modification time if it exists
+                modifiedTime = currentInfo.lastModified();
+            } else {
+                // Fall back to profile directory's modification time
+                QFileInfo profileInfo(getMudletPath(enums::profileDataItemPath, profileName, QString()));
+                modifiedTime = profileInfo.lastModified();
+            }
             
             if (matchingProfile.isEmpty() || modifiedTime > mostRecentTime) {
                 matchingProfile = profileName;
@@ -3850,7 +3860,7 @@ void mudlet::handleTelnetUri(const QString& uri)
         // Load the most recently used matching profile
         doAutoLogin(matchingProfile);
     } else {
-        // Create a new profile for this connection
+        // No existing profile for this server, create a new one
         QString newProfileName = sanitizeProfileName(hostAddress);
         if (port != 23) {
             newProfileName += qsl("-%1").arg(port); // Use dash instead of colon (colon not allowed in profile names)

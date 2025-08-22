@@ -1922,6 +1922,7 @@ void dlgConnectionProfiles::setItemName(QListWidgetItem* pI, const QString& name
     }
 
     pI->setData(csmNameRole, name);
+    pI->setText(name);  // Set the actual display text
     pI->setData(Qt::AccessibleTextRole, item_profile_accessName.arg(name));
     pI->setData(Qt::AccessibleDescriptionRole, item_profile_accessDesc);
 }
