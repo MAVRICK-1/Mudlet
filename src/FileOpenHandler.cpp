@@ -22,7 +22,8 @@
 #include "mudlet.h"
 #include <QUrl>
 
-FileOpenHandler::FileOpenHandler(QObject* parent) : QObject(parent)
+FileOpenHandler::FileOpenHandler(QObject* parent)
+: QObject(parent)
 {
     QCoreApplication::instance()->installEventFilter(this);
 }
@@ -31,9 +32,16 @@ bool FileOpenHandler::eventFilter(QObject* obj, QEvent* event)
 {
     if (event->type() == QEvent::FileOpen) {
         QFileOpenEvent* openEvent = static_cast<QFileOpenEvent*>(event);
-        Q_ASSERT(mudlet::self());
+        if (!mudlet::self()) {
+            qWarning() << "FileOpenHandler::eventFilter() - mudlet instance not available, cannot process file open event";
+            return false;
+        }
         MudletInstanceCoordinator* instanceCoordinator = mudlet::self()->getInstanceCoordinator();
-        
+        if (!instanceCoordinator) {
+            qWarning() << "FileOpenHandler::eventFilter() - Instance coordinator not available, cannot process file open event";
+            return false;
+        }
+
         // Check if we have a URL (e.g., telnet://) or a file
         QUrl url = openEvent->url();
         if (url.isValid() && (url.scheme() == qsl("telnet") || url.scheme() == qsl("mudlet"))) {
@@ -48,7 +56,7 @@ bool FileOpenHandler::eventFilter(QObject* obj, QEvent* event)
             instanceCoordinator->installPackagesLocally();
             return true;
         }
+        return false;
     }
     return QObject::eventFilter(obj, event);
 }
-
